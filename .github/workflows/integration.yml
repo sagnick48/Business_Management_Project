@@ -1,0 +1,39 @@
+name: Integrations Pipeline(CI)
+on:
+    push:
+        branches: ["main"]
+    pull_request: 
+        branches: ["main"]
+    
+jobs:
+    build:
+        runs-on: ubuntu-latest
+        services:
+          mysql:
+            image: mysql:latest
+            env:
+              MYSQL_ROOT_PASSWORD: root
+              MYSQL_DATABASE: businessproject
+              MYSQL_USER: bankinguser
+              MYSQL_PASSWORD: bankingpass
+            ports:
+              - "3306:3306"
+        steps:
+            - uses: actions/checkout@v7
+            - name: Setup Java
+              uses: actions/setup-java@v6
+              with:
+                distribution: temurin
+                java-version: '21'
+            - name: Build the Project
+              run: mvn clean package
+            - name: Start the server
+              run: |
+                mvn spring-boot:run > server.log 2>&1 & 
+                echo $!> server.pid 
+            - name: Wait for server to start
+              run: sleep 35
+            - name: Test the server
+              run: curl -f http://localhost:2330/home
+            - name: Stop the server
+              run: kill $(cat server.pid) || true
